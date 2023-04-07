@@ -38,14 +38,14 @@ public class NotesList extends AppCompatActivity {
                 (Context.LAYOUT_INFLATER_SERVICE);
         notesLayout = findViewById(R.id.notesLinearLayout);
 
-//        for (int i = 0; i < 100; i++) {
-//            Note note = new Note(getApplicationContext());
-//            if (i % 2 == 0) {
-//                note.topic = String.format("topic %d", i);
-//            }
-//            note.text = String.format("%d", i);
-//            note.write();
-//        }
+        for (int i = 0; i < 100; i++) {
+            Note note = new Note(getApplicationContext());
+            if (i % 2 == 0) {
+                note.topic = String.format("topic %d", i);
+            }
+            note.text = String.format("%d", i);
+            note.write();
+        }
 
         String[] fileNames = fileList();
         for (String fileName : fileNames) {
