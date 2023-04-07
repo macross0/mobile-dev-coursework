@@ -27,5 +27,8 @@ public class NoteEdit extends AppCompatActivity {
         toolbar.setNavigationIcon(R.drawable.baseline_arrow_back_24);
         toolbar.setTitle("Редагування нотатки");
         setSupportActionBar(toolbar);
+
+        Switch enableSwitch = findViewById(R.id.enableEditSwitch);
+        enableSwitch.setOnClickListener();
     }
 }
