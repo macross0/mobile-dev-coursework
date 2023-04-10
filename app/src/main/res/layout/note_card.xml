@@ -20,15 +20,16 @@
         <TableLayout
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:layout_marginLeft="16sp"
-            android:layout_marginTop="12sp"
-            android:layout_marginRight="12sp"
-            android:layout_marginBottom="12sp">
+            >
 
             <TableRow
                 android:layout_width="match_parent"
                 android:layout_height="match_parent"
-                android:layout_weight="5">
+                android:layout_marginLeft="16sp"
+                android:layout_marginTop="12sp"
+                android:layout_marginRight="12sp"
+                android:layout_marginBottom="12sp"
+                android:layout_weight="1">
 
                 <TextView
                     android:id="@+id/description"
