@@ -66,7 +66,6 @@ public class NotesList extends AppCompatActivity {
         String[] fileNames = fileList();
         for (int i = 0; i < fileNames.length; i++) {
             Note note = new Note(getApplicationContext(), fileNames[i]);
-            note.read();
 
             CardView card = generateNoteView(NotesList.this, note);
             notesLayout.addView(card);
@@ -132,7 +131,7 @@ public class NotesList extends AppCompatActivity {
             @Override public void onClick(View v) {
                 Bundle include = new Bundle();
                 Intent intent = new Intent(getApplicationContext(), NoteEdit.class);
-                intent.putExtra("note", note);
+                intent.putExtra("filename", note.filename);
                 startActivity(intent);
             }
         });

@@ -14,6 +14,7 @@ import java.util.Date;
 import android.content.Context;
 import android.content.res.Resources;
 import android.util.DisplayMetrics;
+import android.util.Log;
 import android.util.TypedValue;
 import android.view.LayoutInflater;
 import android.view.ViewGroup;
@@ -24,18 +25,17 @@ import android.widget.TextView;
 import androidx.cardview.widget.CardView;
 
 public class Note implements java.io.Serializable {
-    private final transient Context context;
+    public transient Context context;
     public transient String filename;
     public String topic = "";
     public String text;
-    public long modificationTimestamp;
     public long notificationTimestamp;
+    public boolean notify = false;
     public boolean notifyRegularly;
 
     public Note(Context context) {
+        this.filename = String.format("%d", System.currentTimeMillis()) + ".note";
         this.context = context;
-        this.modificationTimestamp = System.currentTimeMillis();
-        this.filename = String.format("%d", this.modificationTimestamp);
     }
     public Note(Context context, String filename) {
         this.context = context;
@@ -43,12 +43,13 @@ public class Note implements java.io.Serializable {
         this.read();
     }
 
-    private void updateFromObject(Note object) {
+    private void updateFromObject(Context context, Note object) {
         this.text = object.text;
         this.topic = object.topic;
-        this.modificationTimestamp = object.modificationTimestamp;
         this.notificationTimestamp = object.notificationTimestamp;
         this.notifyRegularly = object.notifyRegularly;
+        this.notify = object.notify;
+        this.context = context;
     }
 
     public boolean read() {
@@ -57,7 +58,7 @@ public class Note implements java.io.Serializable {
             ObjectInputStream objectInput = new ObjectInputStream(file);
 
             Note fileObjectBuffer = (Note) objectInput.readObject();
-            updateFromObject(fileObjectBuffer);
+            updateFromObject(this.context, fileObjectBuffer);
 
             file.close();
             objectInput.close();
@@ -69,8 +70,9 @@ public class Note implements java.io.Serializable {
     }
 
     public void write() {
+//        Log.d("tag", this.filename);
         try {
-            FileOutputStream file = this.context.openFileOutput(this.filename, this.context.MODE_PRIVATE);
+            FileOutputStream file = this.context.openFileOutput(this.filename, Context.MODE_PRIVATE);
             ObjectOutputStream objectOutput = new ObjectOutputStream(file);
             objectOutput.writeObject(this);
             file.close();
@@ -78,11 +80,6 @@ public class Note implements java.io.Serializable {
         } catch (Exception e) {
             e.printStackTrace();
         }
-    }
-
-    public String getModificationDateTime() {
-        Date datetime = new Date(modificationTimestamp);
-        return (String) android.text.format.DateFormat.format("dd.MM.yy\nHH:mm", datetime);
     }
 
     public String getDescription() {
@@ -94,7 +91,7 @@ public class Note implements java.io.Serializable {
         return !this.topic.isEmpty();
     }
 
-    public boolean delete() {
-        return this.context.deleteFile(this.filename);
+    public void delete(Context context) {
+        context.deleteFile(this.filename);
     }
 }

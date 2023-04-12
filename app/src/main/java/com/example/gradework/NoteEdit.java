@@ -4,12 +4,21 @@ import static android.content.ContentValues.TAG;
 
 import static java.util.Calendar.SHORT_FORMAT;
 
+import android.app.AlarmManager;
+import android.app.AlertDialog;
 import android.app.DatePickerDialog;
+import android.app.Dialog;
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.app.TimePickerDialog;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Color;
 import android.graphics.Typeface;
+import android.opengl.Visibility;
 import android.os.Bundle;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -23,11 +32,13 @@ import android.widget.LinearLayout;
 import android.widget.Switch;
 import android.widget.TextView;
 import android.widget.TimePicker;
+import android.widget.Toast;
 
 import androidx.appcompat.app.ActionBar;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.SwitchCompat;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.app.NotificationCompat;
 
 import com.google.android.material.textfield.TextInputEditText;
 
@@ -41,32 +52,41 @@ public class NoteEdit extends AppCompatActivity {
     Toolbar toolbar;
     Calendar date;
     Note note;
-
+    TextInputEditText topicInput;
+    TextInputEditText textInput;
+    Switch enableSwitch;
+    TextView notificationTime;
+    Button setTimeButton;
+    ImageButton saveNoteButton;
+    Note currentNote;
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         Intent intent = getIntent();
-        note = (Note) intent.getSerializableExtra("note");
+        String filename = (String) intent.getSerializableExtra("filename");
+        currentNote = new Note(getApplicationContext(), filename);
         setContentView(R.layout.note_edit);
+
+        topicInput = findViewById(R.id.noteTopicInput);
+        textInput = findViewById(R.id.noteTextInput);
+        enableSwitch = findViewById(R.id.noteEnableSwitch);
+        notificationTime = findViewById(R.id.time);
+        setTimeButton = findViewById(R.id.setTimeButton);
+        saveNoteButton = findViewById(R.id.saveNote);
 
         toolbar = findViewById(R.id.noteEditToolbar);
         toolbar.setNavigationIcon(R.drawable.baseline_arrow_back_24);
         toolbar.setTitle("Редагування нотатки");
         setSupportActionBar(toolbar);
+        toggleTimeSettingsVisibility(false);
 
-        TextInputEditText topicInput = findViewById(R.id.noteTopicInput);
-        TextInputEditText textInput = findViewById(R.id.noteTextInput);
-        TextView notificationTime = findViewById(R.id.time);
-        Switch enableSwitch = findViewById(R.id.enableEditSwitch);
-        Button setTimeButton = findViewById(R.id.setTimeButton);
-
-        if (note.topic.equals("")) {
+        if (currentNote.topic.equals("")) {
             topicInput.setText("");
         } else {
-            topicInput.setText(note.topic);
+            topicInput.setText(currentNote.topic);
         }
-        textInput.setText(note.text);
-        if (note.notificationTimestamp != 0) {
-            Date datetime = new Date(note.notificationTimestamp);
+        textInput.setText(currentNote.text);
+        if (currentNote.notificationTimestamp != 0) {
+            Date datetime = new Date(currentNote.notificationTimestamp);
             notificationTime.setText((String) android.text.format.DateFormat.format("dd.MM.yy HH:mm", datetime));
         } else {
             notificationTime.setText("Час не вказано");
@@ -74,39 +94,52 @@ public class NoteEdit extends AppCompatActivity {
 
         setTimeButton.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                showDateTimePicker();
+                showTimePicker();
+            }
+        });
+        saveNoteButton.setOnClickListener(new View.OnClickListener() {
+            @Override public void onClick(View v) {
+                NoteEdit.this.currentNote.write();
+                Intent intent = new Intent(getApplicationContext(), Notification.class);
+                intent.putExtra("titleExtra", "Dynamic Title");
+                intent.putExtra("textExtra", "Dynamic Text Body");
+                PendingIntent pendingIntent = PendingIntent.getBroadcast(getApplicationContext(), 1, intent, PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE);
+                AlarmManager alarmManager = (AlarmManager) getSystemService(ALARM_SERVICE);
+                alarmManager.setExact(AlarmManager.RTC_WAKEUP, currentNote.notificationTimestamp, pendingIntent);
+                Toast.makeText(getApplicationContext(),"Нотатку збережено.", Toast.LENGTH_LONG).show();
             }
         });
         enableSwitch.setOnCheckedChangeListener(new CompoundButton.OnCheckedChangeListener() {
             public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                if (isChecked) {
-
-                } else {
-
-                }
+                toggleTimeSettingsVisibility(isChecked);
             }
         });
     }
 
-    public void showDateTimePicker() {
+    private void toggleTimeSettingsVisibility(boolean enable) {
+        if (enable) {
+            this.notificationTime.setVisibility(View.VISIBLE);
+            this.setTimeButton.setVisibility(View.VISIBLE);
+        } else {
+            this.notificationTime.setVisibility(View.GONE);
+            this.setTimeButton.setVisibility(View.GONE);
+        }
+    }
+
+    private void showTimePicker() {
         final Calendar currentDate = Calendar.getInstance();
         date = Calendar.getInstance();
-        new DatePickerDialog(NoteEdit.this, new DatePickerDialog.OnDateSetListener() {
+        new TimePickerDialog(NoteEdit.this, new TimePickerDialog.OnTimeSetListener() {
             @Override
-            public void onDateSet(DatePicker view, int year, int monthOfYear, int dayOfMonth) {
-                date.set(year, monthOfYear, dayOfMonth);
-                new TimePickerDialog(NoteEdit.this, new TimePickerDialog.OnTimeSetListener() {
-                    @Override
-                    public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
-                        date.set(Calendar.HOUR_OF_DAY, hourOfDay);
-                        date.set(Calendar.MINUTE, minute);
-                        note.notificationTimestamp = date.getTimeInMillis();
-                        TextView time = findViewById(R.id.time);
-                        SimpleDateFormat df = new SimpleDateFormat("dd.MM.yyyy HH:mm");
-                        time.setText(df.format(date.getTime()));
-                    }
-                }, currentDate.get(Calendar.HOUR_OF_DAY), currentDate.get(Calendar.MINUTE), true).show();
+            public void onTimeSet(TimePicker view, int hourOfDay, int minute) {
+                date.add(Calendar.DATE, 1);
+                date.set(Calendar.HOUR_OF_DAY, hourOfDay);
+                date.set(Calendar.MINUTE, minute);
+                NoteEdit.this.currentNote.notificationTimestamp = date.getTimeInMillis();
+                TextView time = findViewById(R.id.time);
+                SimpleDateFormat df = new SimpleDateFormat("dd.MM.yyyy HH:mm");
+                time.setText(df.format(date.getTime()));
             }
-        }, currentDate.get(Calendar.YEAR), currentDate.get(Calendar.MONTH), currentDate.get(Calendar.DATE)).show();
+        }, currentDate.get(Calendar.HOUR_OF_DAY), currentDate.get(Calendar.MINUTE), true).show();
     }
 }
