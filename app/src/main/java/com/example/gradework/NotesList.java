@@ -4,16 +4,21 @@ import static android.view.View.TEXT_ALIGNMENT_CENTER;
 
 import androidx.annotation.DrawableRes;
 import androidx.annotation.NonNull;
+import androidx.annotation.RequiresApi;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.appcompat.widget.Toolbar;
 import androidx.cardview.widget.CardView;
 import androidx.constraintlayout.widget.ConstraintLayout;
 import androidx.constraintlayout.widget.ConstraintSet;
+import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Typeface;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Parcel;
 import android.text.TextUtils;
@@ -23,6 +28,9 @@ import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.Switch;
@@ -37,14 +45,12 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 public class NotesList extends AppCompatActivity {
 
-    public ScrollView notesScrollView;
     public LinearLayout notesLayout;
-    Map<Integer, Note> notes = new ArrayMap<Integer, Note>();
-
-    LayoutInflater inflater;
+    ImageButton newNote;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -52,68 +58,61 @@ public class NotesList extends AppCompatActivity {
         setContentView(R.layout.notes_list);
         setTitle(R.string.app_name);
 
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            this.requestAlarmPermission();
+        }
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            this.requestPostNotificaionPermission();
+        }
+
         notesLayout = findViewById(R.id.notesLinearLayout);
+        newNote = findViewById(R.id.newNote);
+        newNote.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                Intent intent = new Intent(getApplicationContext(), NoteEdit.class);
+                intent.putExtra("filename", "");
+                startActivity(intent);
+            }
+        });
+        updateNoteList();
+    }
 
-//        for (int i = 0; i < 100; i++) {
-//            Note note = new Note(getApplicationContext());
-//            if (i % 2 == 0) {
-//                note.topic = String.format("topic %d", i);
-//            }
-//            note.text = String.format("%d", i);
-//            note.write();
-//        }
-
+    public void updateNoteList() {
+        notesLayout.removeAllViews();
         String[] fileNames = fileList();
-        for (int i = 0; i < fileNames.length; i++) {
-            Note note = new Note(getApplicationContext(), fileNames[i]);
-
+        for (String fileName : fileNames) {
+            Note note = new Note(getApplicationContext(), fileName);
             CardView card = generateNoteView(NotesList.this, note);
             notesLayout.addView(card);
         }
     }
-//            description.setOnClickListener(new View.OnClickListener() {
-//                @Override public void onClick(View v) {
-//                    Bundle include = new Bundle();
-//                    Intent intent = new Intent(getApplicationContext(), NoteEdit.class);
-//                    intent.putExtra("note", finalNote);
-//                    startActivity(intent);
-//                }
-//            });
-//            TextView datetime = card.findViewById(R.id.notificationDatetime);
-////            Switch enable_switch = card.findViewById(R.id.enableSwitch);
-//
-//            description.setText(note.getDescription());
-//            if (note.hasTopic()) {
-//                description.setTypeface(null, Typeface.BOLD);
-//            }
-//            datetime.setText(note.getModificationDateTime());
-//        }
 
-//        fileText = findViewById(R.id.read_data);
-//        writeButton = findViewById(R.id.write);
-//        readButton = findViewById(R.id.read);
-//        writeButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-//                writeFile("test.note", "test1234");
-//            }
-//        });
-//
-//        readButton.setOnClickListener(new View.OnClickListener() {
-//            @Override
-//            public void onClick(View view) {
-////                fileText.setText();
-//            }
-//        });
-//    }
+    @RequiresApi(api = Build.VERSION_CODES.S)
+    private void requestAlarmPermission() {
+        if (!(ContextCompat.checkSelfPermission(this, android.Manifest.permission.SCHEDULE_EXACT_ALARM) == PackageManager.PERMISSION_GRANTED)) {
+            int requestCode = UUID.randomUUID().hashCode();
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.SCHEDULE_EXACT_ALARM}, requestCode);
+        }
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.TIRAMISU)
+    private void requestPostNotificaionPermission() {
+        if (!(ContextCompat.checkSelfPermission(this, android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED)) {
+            int requestCode = UUID.randomUUID().hashCode();
+            ActivityCompat.requestPermissions(this, new String[]{android.Manifest.permission.POST_NOTIFICATIONS}, requestCode);
+        }
+    }
 
     private CardView generateNoteView(Context context, Note note) {
         TextView description = new TextView(context);
         if (note.hasTopic()) {
             description.setText(note.topic);
             description.setTypeface(null, Typeface.BOLD);
-        } else {
+        } else if (note.hasText()) {
             description.setText(note.text);
+        } else {
+            description.setText("<Текст відсутній>");
         }
         LinearLayout.LayoutParams descriptionParams = new LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.WRAP_CONTENT,
@@ -129,7 +128,6 @@ public class NotesList extends AppCompatActivity {
         description.setTextColor(getColor(R.color.white));
         description.setOnClickListener(new View.OnClickListener() {
             @Override public void onClick(View v) {
-                Bundle include = new Bundle();
                 Intent intent = new Intent(getApplicationContext(), NoteEdit.class);
                 intent.putExtra("filename", note.filename);
                 startActivity(intent);
@@ -137,36 +135,29 @@ public class NotesList extends AppCompatActivity {
         });
 
         View divider = new View(context);
-        LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
-                1,
-                LinearLayout.LayoutParams.MATCH_PARENT
-        );
-        dividerParams.setMargins(0, 0, this.spToPx(10), 0);
-        divider.setLayoutParams(dividerParams);
-        divider.setBackgroundColor(getColor(R.color.white));
-
         TextView notificationDatetime = new TextView(context);
-        LinearLayout.LayoutParams datetimeParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.MATCH_PARENT
-        );
-        datetimeParams.setMargins(0, 0, this.spToPx(10), 0);
-        notificationDatetime.setLayoutParams(datetimeParams);
-        Date datetime = new Date(note.notificationTimestamp);
-        notificationDatetime.setText((String) android.text.format.DateFormat.format("dd.MM.yy\nHH:mm", datetime));
-        notificationDatetime.setTextColor(getColor(R.color.white));
-        notificationDatetime.setGravity(Gravity.CENTER_VERTICAL);
-        notificationDatetime.setPadding(0, 0, 0, 0);
-        notificationDatetime.setTextAlignment(TEXT_ALIGNMENT_CENTER);
+        if (note.notify) {
+            LinearLayout.LayoutParams dividerParams = new LinearLayout.LayoutParams(
+                    1,
+                    LinearLayout.LayoutParams.MATCH_PARENT
+            );
+            dividerParams.setMargins(0, 0, this.spToPx(10), 0);
+            divider.setLayoutParams(dividerParams);
+            divider.setBackgroundColor(getColor(R.color.white));
 
-        Switch enableSwitch = new Switch(context);
-        LinearLayout.LayoutParams switchParams = new LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.WRAP_CONTENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-        );
-        switchParams.gravity = Gravity.CENTER;
-        enableSwitch.setLayoutParams(switchParams);
-        enableSwitch.setPadding(0, this.spToPx(8), 0, this.spToPx(8));
+            LinearLayout.LayoutParams datetimeParams = new LinearLayout.LayoutParams(
+                    LinearLayout.LayoutParams.WRAP_CONTENT,
+                    LinearLayout.LayoutParams.MATCH_PARENT
+            );
+            datetimeParams.setMargins(0, 0, this.spToPx(10), 0);
+            notificationDatetime.setLayoutParams(datetimeParams);
+            Date datetime = new Date(note.notificationTimestamp);
+            notificationDatetime.setText((String) android.text.format.DateFormat.format("dd.MM.yy\nHH:mm", datetime));
+            notificationDatetime.setTextColor(getColor(R.color.white));
+            notificationDatetime.setGravity(Gravity.CENTER_VERTICAL);
+            notificationDatetime.setPadding(0, 0, 0, 0);
+            notificationDatetime.setTextAlignment(TEXT_ALIGNMENT_CENTER);
+        }
 
         LinearLayout views = new LinearLayout(context);
         LinearLayout.LayoutParams rowParams = new LinearLayout.LayoutParams(
@@ -181,10 +172,12 @@ public class NotesList extends AppCompatActivity {
         );
         views.setLayoutParams(rowParams);
         views.setOrientation(LinearLayout.HORIZONTAL);
+        views.setMinimumHeight(60);
         views.addView(description);
-        views.addView(divider);
-        views.addView(notificationDatetime);
-        views.addView(enableSwitch);
+        if (note.notify) {
+            views.addView(divider);
+            views.addView(notificationDatetime);
+        }
 
         CardView card = new CardView(context);
         LinearLayout.LayoutParams cardParams = new LinearLayout.LayoutParams(
@@ -208,5 +201,11 @@ public class NotesList extends AppCompatActivity {
 
     private int spToPx(float sp) {
         return (int) TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_SP, sp, getApplicationContext().getResources().getDisplayMetrics());
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        updateNoteList();
     }
 }

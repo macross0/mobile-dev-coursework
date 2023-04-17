@@ -10,6 +10,7 @@ import java.io.ObjectOutputStream;
 import java.io.Serializable;
 import java.time.format.DateTimeFormatter;
 import java.util.Date;
+import java.util.UUID;
 
 import android.content.Context;
 import android.content.res.Resources;
@@ -27,11 +28,11 @@ import androidx.cardview.widget.CardView;
 public class Note implements java.io.Serializable {
     public transient Context context;
     public transient String filename;
+    private static final long serialVersionUID = 6529685098267757690L;;
     public String topic = "";
-    public String text;
+    public String text = "";
     public long notificationTimestamp;
     public boolean notify = false;
-    public boolean notifyRegularly;
 
     public Note(Context context) {
         this.filename = String.format("%d", System.currentTimeMillis()) + ".note";
@@ -47,7 +48,6 @@ public class Note implements java.io.Serializable {
         this.text = object.text;
         this.topic = object.topic;
         this.notificationTimestamp = object.notificationTimestamp;
-        this.notifyRegularly = object.notifyRegularly;
         this.notify = object.notify;
         this.context = context;
     }
@@ -70,7 +70,6 @@ public class Note implements java.io.Serializable {
     }
 
     public void write() {
-//        Log.d("tag", this.filename);
         try {
             FileOutputStream file = this.context.openFileOutput(this.filename, Context.MODE_PRIVATE);
             ObjectOutputStream objectOutput = new ObjectOutputStream(file);
@@ -82,16 +81,11 @@ public class Note implements java.io.Serializable {
         }
     }
 
-    public String getDescription() {
-        if (!this.topic.isEmpty()) return this.topic;
-        return this.text;
-    }
-
     public boolean hasTopic() {
         return !this.topic.isEmpty();
     }
 
-    public void delete(Context context) {
-        context.deleteFile(this.filename);
+    public boolean hasText() {
+        return !this.text.isEmpty();
     }
 }
