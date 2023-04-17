@@ -1,29 +1,11 @@
 package com.example.gradework;
 
-import org.json.JSONException;
-import org.json.JSONObject;
+import android.content.Context;
 
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
-import java.io.Serializable;
-import java.time.format.DateTimeFormatter;
-import java.util.Date;
-import java.util.UUID;
-
-import android.content.Context;
-import android.content.res.Resources;
-import android.util.DisplayMetrics;
-import android.util.Log;
-import android.util.TypedValue;
-import android.view.LayoutInflater;
-import android.view.ViewGroup;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.TextView;
-
-import androidx.cardview.widget.CardView;
 
 public class Note implements java.io.Serializable {
     public transient Context context;
